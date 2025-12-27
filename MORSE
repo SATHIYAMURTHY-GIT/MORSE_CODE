@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Morse Code Typewriter • Three.js</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<style>
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Courier New', Courier, monospace;
+    background: #000;
+    color: #0f0;
+    overflow: hidden;
+}
+
+#container {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+}
+
+/* ===== Enhanced neon UI with better visibility ===== */
+.content {
+    position: relative;
+    z-index: 10;
+    padding: 2rem;
+    max-width: 900px;
+    width: 100%;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+}
+
+h1 {
+    text-align: center;
+    margin: 0.5em 0;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #00ff00;
+    text-shadow: 
+        0 0 10px #00ff00,
+        0 0 20px #00ff00,
+        0 0 40px #00ff00;
+    letter-spacing: 4px;
+    background: rgba(0, 20, 0, 0.85);
+    padding: 15px 30px;
+    border-radius: 12px;
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.5);
+    backdrop-filter: blur(8px);
+}
+
+/* ===== Enhanced text containers with neon glow ===== */
+.input-area,
+.output-area {
+    background: rgba(0, 20, 0, 0.9);
+    border: 2px solid #00ff00;
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+    box-shadow: 
+        0 0 20px rgba(0, 255, 0, 0.4),
+        inset 0 0 20px rgba(0, 255, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.input-area:hover,
+.output-area:hover {
+    box-shadow: 
+        0 0 30px rgba(0, 255, 0, 0.6),
+        inset 0 0 30px rgba(0, 255, 0, 0.2);
+}
+
+/* ===== Textarea with enhanced visibility ===== */
+textarea {
+    width: 100%;
+    min-height: 140px;
+    max-height: 40vh;
+    background: transparent;
+    border: none;
+    color: #aaffaa;
+    font-family: 'Courier New', monospace;
+    font-size: 1.4rem;
+    line-height: 1.6;
+    outline: none;
+    resize: none;
+    overflow-y: hidden;
+    text-shadow: 0 0 5px #aaffaa;
+    letter-spacing: 1px;
+}
+
+textarea::placeholder {
+    color: #88ff88;
+    opacity: 0.7;
+}
+
+/* ===== Output with cyan neon glow ===== */
+.output {
+    width: 100%;
+    white-space: pre-wrap;
+    color: #00ffff;
+    font-size: 1.5rem;
+    line-height: 1.6;
+    text-shadow: 
+        0 0 8px #00ffff,
+        0 0 16px rgba(0, 255, 255, 0.5);
+    letter-spacing: 1.5px;
+    overflow-y: auto;
+}
+
+/* ===== Enhanced controls with neon effects ===== */
+.controls {
+    text-align: center;
+    margin: 1.5rem 0;
+    padding: 20px;
+    background: rgba(0, 25, 0, 0.85);
+    border-radius: 12px;
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+    backdrop-filter: blur(8px);
+}
+
+button {
+    padding: 14px 32px;
+    margin: 8px 12px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    background: rgba(0, 40, 0, 0.8);
+    color: #00ff00;
+    border: 2px solid #00ff00;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    position: relative;
+    overflow: hidden;
+}
+
+button:hover {
+    background: rgba(0, 80, 0, 0.9);
+    box-shadow: 
+        0 0 20px #00ff00,
+        0 0 40px rgba(0, 255, 0, 0.5);
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.direction-btn.active {
+    background: #00ff00;
+    color: #000;
+    box-shadow: 
+        0 0 30px #00ff00,
+        0 0 60px rgba(0, 255, 0, 0.7);
+    text-shadow: none;
+}
+
+#clear {
+    background: rgba(40, 0, 0, 0.8);
+    border-color: #ff3333;
+    color: #ff6666;
+}
+
+#clear:hover {
+    background: rgba(80, 0, 0, 0.9);
+    box-shadow: 0 0 20px #ff3333;
+}
+
+/* ===== Scrollbar styling ===== */
+.output::-webkit-scrollbar {
+    width: 8px;
+}
+
+.output::-webkit-scrollbar-track {
+    background: rgba(0, 20, 0, 0.5);
+    border-radius: 4px;
+}
+
+.output::-webkit-scrollbar-thumb {
+    background: #00ff00;
+    border-radius: 4px;
+    box-shadow: 0 0 10px #00ff00;
+}
+</style>
+</head>
+
+<body>
+
+<div id="container"></div>
+
+<div class="content">
+    <h1>MORSE CODE TYPEWRITER</h1>
+
+    <div class="input-area" id="inputArea">
+        <textarea id="input" placeholder="Type text here or paste Morse code..."></textarea>
+    </div>
+
+    <div class="controls">
+        <button class="direction-btn active" data-dir="text-to-morse">Text → Morse</button>
+        <button class="direction-btn" data-dir="morse-to-text">Morse → Text</button>
+        <button id="clear">Clear</button>
+    </div>
+
+    <div class="output-area" id="outputArea">
+        <div class="output" id="output"></div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+<script>
+// ==================== MATRIX BACKGROUND SETUP ====================
+const scene = new THREE.Scene();
+
+// Use Orthographic camera for 2D Matrix effect
+const camera = new THREE.OrthographicCamera(
+    window.innerWidth / -2,
+    window.innerWidth / 2,
+    window.innerHeight / 2,
+    window.innerHeight / -2,
+    0,
+    10
+);
+camera.position.z = 5;
+
+const renderer = new THREE.WebGLRenderer({ 
+    alpha: true,
+    antialias: true 
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+document.getElementById('container').appendChild(renderer.domElement);
+
+/* ===================== MATRIX SETTINGS ===================== */
+const MATRIX_CHARS = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+const FONT_SIZE = 20;
+const COLUMN_WIDTH = FONT_SIZE * 0.75;
+const COLUMNS = Math.ceil(window.innerWidth / COLUMN_WIDTH) + 5;
+
+// Create texture cache for better performance
+const textureCache = {};
+function createCharTexture(char) {
+    if (textureCache[char]) return textureCache[char];
+    
+    const canvas = document.createElement('canvas');
+    const size = 64;
+    canvas.width = size;
+    canvas.height = size;
+
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, size, size);
+
+    const brightness = 0.3 + Math.random() * 0.4;
+    ctx.fillStyle = `rgb(0, ${Math.floor(150 * brightness)}, 0)`;
+    ctx.font = 'bold 48px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(char, size/2, size/2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+    textureCache[char] = texture;
+    return texture;
+}
+
+/* ===================== CREATE MATRIX DROPS ===================== */
+const drops = [];
+const dropSpeeds = [];
+
+for (let col = 0; col < COLUMNS; col++) {
+    drops[col] = [];
+    dropSpeeds[col] = [];
+    
+    const dropsInColumn = Math.ceil(window.innerHeight / FONT_SIZE) + 10;
+    
+    for (let row = 0; row < dropsInColumn; row++) {
+        const x = col * COLUMN_WIDTH - window.innerWidth / 2;
+        const y = row * FONT_SIZE - window.innerHeight / 2;
+        
+        const char = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+        
+        const material = new THREE.SpriteMaterial({
+            map: createCharTexture(char),
+            transparent: true,
+            opacity: 0.6 + Math.random() * 0.4,
+            color: new THREE.Color(0, 0.5 + Math.random() * 0.5, 0)
+        });
+        
+        const sprite = new THREE.Sprite(material);
+        sprite.position.set(x, y, 0);
+        sprite.scale.set(FONT_SIZE * 0.9, FONT_SIZE, 1);
+        
+        const speed = 1 + Math.random() * 3;
+        dropSpeeds[col][row] = speed;
+        
+        sprite.userData = {
+            column: col,
+            row: row,
+            lastCharChange: 0,
+            charChangeInterval: 100 + Math.random() * 300
+        };
+        
+        scene.add(sprite);
+        drops[col][row] = sprite;
+    }
+}
+
+/* ===================== MATRIX ANIMATION ===================== */
+let lastTime = 0;
+
+function animateMatrix(currentTime) {
+    requestAnimationFrame(animateMatrix);
+    
+    const deltaTime = lastTime ? currentTime - lastTime : 16.67;
+    lastTime = currentTime;
+    
+    for (let col = 0; col < COLUMNS; col++) {
+        for (let row = 0; row < drops[col].length; row++) {
+            const drop = drops[col][row];
+            const speed = dropSpeeds[col][row];
+            
+            drop.position.y -= speed * (deltaTime / 16.67);
+            
+            drop.userData.lastCharChange += deltaTime;
+            if (drop.userData.lastCharChange > drop.userData.charChangeInterval) {
+                const char = MATRIX_CHARS[Math.floor(Math.random() * MATRIX_CHARS.length)];
+                drop.material.map = createCharTexture(char);
+                drop.userData.lastCharChange = 0;
+                drop.userData.charChangeInterval = 50 + Math.random() * 200;
+            }
+            
+            if (drop.position.y < -window.innerHeight / 2 - FONT_SIZE * 2) {
+                drop.position.y = window.innerHeight / 2 + FONT_SIZE;
+            }
+        }
+    }
+    
+    renderer.render(scene, camera);
+}
+
+animateMatrix();
+
+/* ===================== RESIZE HANDLER ===================== */
+window.addEventListener('resize', () => {
+    camera.left = window.innerWidth / -2;
+    camera.right = window.innerWidth / 2;
+    camera.top = window.innerHeight / 2;
+    camera.bottom = window.innerHeight / -2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ==================== MORSE LOGIC (UNCHANGED) ====================
+const MORSE_CODE = {
+    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.',
+    'F': '..-.', 'G': '--.', 'H': '....', 'I': '..', 'J': '.---',
+    'K': '-.-', 'L': '.-..', 'M': '--', 'N': '-.', 'O': '---',
+    'P': '.--.', 'Q': '--.-', 'R': '.-.', 'S': '...', 'T': '-',
+    'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-', 'Y': '-.--',
+    'Z': '--..',
+    '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....',
+    '6': '-....', '7': '--...', '8': '---..', '9': '----.', '0': '-----',
+    '.': '.-.-.-', ',': '--..--', '?': '..--..',
+    '!': '-.-.--', '(': '-.--.', ')': '-.--.-',
+    '&': '.-...', ':': '---...', ';': '-.-.-.', '=': '-...-',
+    '+': '.-.-.', '-': '-....-', '_': '..--.-', '"': '.-..-.',
+    '$': '...-..-', '@': '.--.-.',
+    ' ': '/'
+};
+
+const REVERSE_MORSE = Object.fromEntries(
+    Object.entries(MORSE_CODE).map(([k, v]) => [v, k])
+);
+
+const inputEl = document.getElementById('input');
+const outputEl = document.getElementById('output');
+const inputArea = document.getElementById('inputArea');
+const outputArea = document.getElementById('outputArea');
+const directionBtns = document.querySelectorAll('[data-dir]');
+let currentDirection = 'text-to-morse';
+
+directionBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        directionBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDirection = btn.dataset.dir;
+        convert();
+    });
+});
+
+// ===== Auto resize input & sync output height =====
+function syncHeights() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = inputEl.scrollHeight + 'px';
+
+    const h = inputEl.scrollHeight + 40;
+    inputArea.style.height = h + 'px';
+    outputArea.style.height = h + 'px';
+}
+
+let typingTimeout;
+inputEl.addEventListener('input', () => {
+    syncHeights();
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(convert, 300);
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+    inputEl.value = '';
+    outputEl.textContent = '';
+    syncHeights();
+});
+
+// ==================== Convert (UNCHANGED LOGIC) ====================
+function convert() {
+    const text = inputEl.value.trim();
+    if (!text) {
+        outputEl.textContent = '';
+        return;
+    }
+
+    if (currentDirection === 'text-to-morse' && /[.\-\/]/.test(text)) {
+        outputEl.textContent = 'Invalid input';
+        return;
+    }
+
+    if (currentDirection === 'morse-to-text' && /[^.\-\/\s]/.test(text)) {
+        outputEl.textContent = 'Invalid input';
+        return;
+    }
+
+    let result = '';
+
+    if (currentDirection === 'text-to-morse') {
+        result = text.toUpperCase()
+            .split('')
+            .map(c => MORSE_CODE[c] || '')
+            .filter(Boolean)
+            .join(' ');
+    } else {
+        result = text
+            .trim()
+            .split(/\s*\/\s*/)
+            .map(word =>
+                word
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map(code => REVERSE_MORSE[code] || '?')
+                    .join('')
+            )
+            .join(' ');
+    }
+
+    typeWriter(result);
+}
+
+let currentTyping;
+function typeWriter(text) {
+    if (currentTyping) clearInterval(currentTyping);
+    outputEl.textContent = '';
+    let i = 0;
+
+    currentTyping = setInterval(() => {
+        if (i < text.length) {
+            outputEl.textContent += text.charAt(i++);
+        } else {
+            clearInterval(currentTyping);
+            currentTyping = null;
+        }
+    }, 45);
+
+    syncHeights();
+}
+
+outputEl.textContent = "Start typing above...";
+syncHeights();
+</script>
+</body>
+</html>
